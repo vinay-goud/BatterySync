@@ -1,0 +1,151 @@
+.battery {
+    height: 100vh;
+    display: grid;
+    place-items: center;
+    margin: 0 1.5rem;
+}
+
+.battery__card {
+    background-color: var(--container-color);
+    padding: 1.8rem 2.5rem;
+    border-radius: 1.25rem;
+    box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.3);
+    display: grid;
+    grid-template-columns: max-content max-content;
+    align-items: center;
+    column-gap: 1.25rem;
+    animation: fadeIn 0.5s ease;
+}
+
+.battery__text {
+    margin-bottom: 0.5rem;
+}
+
+.battery__percentage {
+    font-size: 2.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.battery__status {
+    display: flex;
+    align-items: center;
+    column-gap: 0.375rem;
+    font-size: 0.813rem;
+}
+
+.battery__status i {
+    font-size: 1.25rem;
+}
+
+.battery__pill {
+    position: relative;
+    width: 75px;
+    height: 180px;
+    background-color: hsla(260, 80%, 16%, 0.3);
+    border-radius: 3rem;
+    justify-self: flex-start;
+}
+
+.battery__level {
+    position: absolute;
+    inset: 2px;
+    border-radius: 3rem;
+    overflow: hidden;
+}
+
+.battery__liquid {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    background: var(--gradient-color-red);
+    transition: 0.4s;
+}
+
+.battery__liquid::after {
+    content: '';
+    position: absolute;
+    height: 8px;
+    background: var(--gradient-color-red);
+    box-shadow: 0 0 12px hsla(260, 100%, 52%, 0.3);
+    left: -1px;
+    right: -1px;
+    margin: 0 auto;
+    top: -4px;
+    border-radius: 50%;
+    filter: blur(2px);
+}
+
+/* Gradient color */
+.gradient-color-red,
+.gradient-color-red::after {
+    background: var(--gradient-color-red);
+}
+
+.gradient-color-orange,
+.gradient-color-orange::after {
+    background: var(--gradient-color-orange);
+}
+
+.gradient-color-yellow,
+.gradient-color-yellow::after {
+    background: var(--gradient-color-yellow);
+}
+
+.gradient-color-green,
+.gradient-color-green::after {
+    background: var(--gradient-color-green);
+}
+
+/* Status colors */
+.green-color {
+    color: hsl(92, 89%, 46%);
+}
+
+.animated-red {
+    animation: animated-charging 1.2s infinite;
+    color: hsl(7, 89%, 46%);
+}
+
+.animated-green {
+    animation: animated-charging 1.2s infinite;
+    color: hsl(92, 89%, 46%);
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes animated-charging {
+    0% {
+        transform: translateX(0);
+    }
+    50% {
+        transform: translateX(10px);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* For devices with max-width: 320px */
+@media screen and (max-width: 320px) {
+    .battery__card {
+        padding: 1.2rem 1.8rem;
+    }
+    .battery__pill {
+        width: 60px;
+        height: 150px;
+    }
+    .battery__percentage {
+        font-size: 2rem;
+    }
+}
