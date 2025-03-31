@@ -1,0 +1,54 @@
+const CACHE_NAME = "batterysync-v1";
+const ASSETS_TO_CACHE = [
+  "/",
+  "/index.html",
+  "/manifest.json",
+  // Update paths to match React structure
+  "/img/favicon.png",
+  "/img/icon-192.png",
+  "/img/icon-512.png",
+  "/audio/notification.mp3",
+  "https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css",
+];
+
+// Install Service Worker & Cache Files
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
+});
+
+// Activate Service Worker & Remove Old Cache
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      );
+    })
+  );
+});
+
+// Fetch Event - Serve Cached Files
+// and Update Cache
+self.addEventListener("fetch", (event) => {
+  // Skip non-GET requests
+  if (event.request.method !== "GET") {
+    return;
+  }
+
+  // Skip backend API requests
+  if (event.request.url.includes("batterysync-backend.onrender.com")) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    })
+  );
+});

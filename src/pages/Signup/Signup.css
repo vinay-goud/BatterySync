@@ -1,0 +1,173 @@
+/* Copy the same styles from Login.css but replace 'login' with 'signup' in class names */
+.signup-container {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, hsl(0, 0%, 11%) 0%, hsl(0, 0%, 8%) 100%);
+    padding: 1rem;
+}
+
+/* ... rest of the styles similar to Login.css ... */
+.signup-form {
+    background: var(--container-color);
+    padding: 2rem;
+    border-radius: 1rem;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.signup-container {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, hsl(0, 0%, 11%) 0%, hsl(0, 0%, 8%) 100%);
+    padding: 1rem;
+}
+
+.signup-form {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    padding: 2.5rem 2rem;
+    border-radius: 1.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: formAppear 0.5s ease;
+}
+
+.signup-form h2 {
+    color: var(--text-color);
+    text-align: center;
+    margin-bottom: 2rem;
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(64, 112, 244, 0.1);
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.signup-form button {
+    width: 100%;
+    padding: 1rem;
+    border: none;
+    border-radius: 0.75rem;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+}
+
+.signup-form button:hover {
+    background: #3060e0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(64, 112, 244, 0.3);
+}
+
+.signup-form button:active {
+    transform: translateY(0);
+}
+
+.error-message {
+    color: #ff4444;
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    min-height: 20px;
+    animation: shake 0.5s ease;
+}
+
+.login-link {
+    text-align: center;
+    margin-top: 1.5rem;
+    color: var(--text-color);
+    font-size: 0.95rem;
+}
+
+.login-link a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 0.5rem;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+
+@keyframes formAppear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Responsive Design */
+@media screen and (max-width: 480px) {
+    .signup-form {
+        padding: 2rem 1.5rem;
+        margin: 1rem;
+    }
+
+    .signup-form h2 {
+        font-size: 1.5rem;
+    }
+
+    .form-group input {
+        padding: 0.875rem;
+    }
+
+    .signup-form button {
+        padding: 0.875rem;
+    }
+}
+
+@media screen and (max-width: 320px) {
+    .signup-form {
+        padding: 1.5rem 1rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+}

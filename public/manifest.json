@@ -1,0 +1,40 @@
+{
+    "name": "BatterySync",
+    "short_name": "BatterySync",
+    "description": "Real-time battery monitoring",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "scope": "/",
+    "permissions": [
+        "https://batterysync-backend.onrender.com/*"
+    ],
+    "icons": [
+        {
+            "src": "/img/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/img/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/img/screenshot-desktop.png",
+            "sizes": "1280x800",
+            "type": "image/png",
+            "form_factor": "wide"
+        },
+        {
+            "src": "/img/screenshot-mobile.png",
+            "sizes": "750x1334",
+            "type": "image/png"
+        }
+    ]
+}
