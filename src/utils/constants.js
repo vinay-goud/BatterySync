@@ -1,9 +1,9 @@
 export const API_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:5000"
-    : "https://batterysync-backend.onrender.com";
-
+  import.meta.env.VITE_API_URL || "https://batterysync-backend.onrender.com";
 export const WS_URL =
-  window.location.hostname === "localhost"
-    ? "ws://localhost:5000/ws"
-    : "wss://batterysync-backend.onrender.com/ws";
+  import.meta.env.VITE_WS_URL || "wss://batterysync-backend.onrender.com/ws";
+
+export const ALLOWED_ORIGINS = [
+  "https://battery-sync.vercel.app",
+  "http://localhost:3000",
+];
