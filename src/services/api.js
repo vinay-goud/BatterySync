@@ -10,44 +10,34 @@ class ApiService {
     const headers = {
       "Content-Type": "application/json",
       Accept: "application/json",
-      Origin: window.location.origin,
       ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
     };
 
+    const url = `${this.baseURL}${endpoint}`;
+    console.log("Requesting:", url); // For debugging
+
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const response = await fetch(url, {
         ...options,
         headers,
-        credentials: "include",
         mode: "cors",
       });
 
-      const data = await response.json();
-
-      if (response.status === 401) {
-        this.handleAuthError();
-        throw new Error("Unauthorized access. Please login again.");
-      }
-
       if (!response.ok) {
-        throw new Error(data.detail || "Request failed");
+        if (response.status === 401) {
+          this.handleAuthError();
+          throw new Error("Unauthorized access");
+        }
+        const error = await response.json();
+        throw new Error(error.detail || "Request failed");
       }
 
-      return data;
+      return response.json();
     } catch (error) {
-      if (error.name === "TypeError" && error.message === "Failed to fetch") {
-        throw new Error("Network error. Please check your connection.");
-      }
-      throw error;
-    }
-  }
-
-  handleAuthError() {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userEmail");
-    if (window.location.pathname !== "/login") {
-      window.location.href = "/login";
+      console.error(`API Error (${endpoint}):`, error);
+      throw new Error(
+        error.message || "Network error. Please check your connection."
+      );
     }
   }
 
@@ -56,9 +46,8 @@ class ApiService {
     return this.request("/login", {
       method: "POST",
       body: JSON.stringify({
-        email,
+        email: email.trim(),
         password,
-        device_id: localStorage.getItem("deviceId") || crypto.randomUUID(),
       }),
     });
   }
@@ -67,9 +56,8 @@ class ApiService {
     return this.request("/signup", {
       method: "POST",
       body: JSON.stringify({
-        email,
+        email: email.trim(),
         password,
-        device_id: localStorage.getItem("deviceId") || crypto.randomUUID(),
       }),
     });
   }
