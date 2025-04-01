@@ -1,64 +1,78 @@
-// batterysync-react/src/pages/Home/Home.jsx - UPDATED
-import React, { useEffect, useState } from 'react';
+// batterysync-react/src/pages/Home/Home.jsx
+import React, { useEffect, useRef } from 'react';
 import Battery from '../../components/Battery/Battery';
 import useAuth from '../../hooks/useAuth';
 import { websocketService } from '../../services/websocket';
 import useBatteryStore from '../../store/batteryStore';
-// Remove these unused imports:
-// import { batteryService } from '../../services/battery';
-// import { getBatteryColor, getStatusInfo } from '../../utils/batteryHelpers';
 import { showNotification } from '../../utils/notifications';
+import LoadingSpinner from '../../components/LoadingSpinner/LoadingSpinner';
 import 'remixicon/fonts/remixicon.css';
 import './Home.css';
 
 const Home = () => {
     const { token, email } = useAuth();
-    const { batteryData, error, initializeBattery } = useBatteryStore();
-    const [initialized, setInitialized] = useState(false);
+    const { batteryData, error, loading, initializeBattery } = useBatteryStore();
+    const initRef = useRef(false);
 
+    // Initialize only once
     useEffect(() => {
-        // Only initialize once
-        if (initialized) return;
+        // Use a ref to prevent double initialization in strict mode
+        if (initRef.current) return;
+        
+        if (!token || !email) {
+            console.warn("Cannot initialize - missing token or email");
+            return;
+        }
         
         console.log("Home component first mount with auth:", { token, email });
 
         // Request notification permission
-        if (Notification.permission === "default") {
+        if (Notification && Notification.permission === "default") {
             Notification.requestPermission();
         }
 
         // Register service worker
         if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("/service-worker.js")
-                .then(registration => console.log("ServiceWorker registered:", registration))
-                .catch(error => console.error("ServiceWorker registration failed:", error));
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("/service-worker.js")
+                    .then(registration => {
+                        console.log("ServiceWorker registered:", registration);
+                    })
+                    .catch(error => {
+                        console.error("ServiceWorker registration failed:", error);
+                    });
+            });
         }
 
-        // Initialize battery monitoring
-        if (token && email) {
-            console.log("Initializing battery monitoring (first time)");
-            initializeBattery();
-            
-            // Connect WebSocket only once
-            websocketService.connect(token, email);
-            
-            // Debug the battery store to make sure it's properly initialized
-            setTimeout(() => {
-                const storeState = useBatteryStore.getState();
-                console.log("Battery store state after initialization:", storeState);
-            }, 2000);
-            
-            setInitialized(true);
-        } else {
-            console.warn("Cannot initialize battery - missing token or email");
-        }
+        const initialize = async () => {
+            try {
+                console.log("Initializing battery monitoring (first time)");
+                await initializeBattery();
+                
+                // Connect WebSocket only once
+                websocketService.connect(token, email);
+                
+                initRef.current = true;
+                
+                // Debug the battery store to make sure it's properly initialized
+                setTimeout(() => {
+                    const storeState = useBatteryStore.getState();
+                    console.log("Battery store state after initialization:", storeState);
+                }, 2000);
+            } catch (err) {
+                console.error("Error during initialization:", err);
+            }
+        };
+        
+        initialize();
 
-        // Cleanup on unmount
+        // Cleanup on unmount - using a closure to maintain reference
+        const ws = websocketService;
         return () => {
             console.log("Home component unmounting, disconnecting WebSocket");
-            websocketService.disconnect();
+            ws.disconnect();
         };
-    }, [token, email, initializeBattery, initialized]);
+    }, [token, email, initializeBattery]);
 
     // Show error notifications only when error changes
     useEffect(() => {
@@ -71,24 +85,19 @@ const Home = () => {
         }
     }, [error]);
 
-    // Show low battery notification if battery level is low
+    // Show low battery notification
     useEffect(() => {
         if (batteryData && batteryData.level <= 20 && !batteryData.charging) {
             showNotification('Low Battery', 'Your battery is running low');
         }
-    }, [batteryData]);
+    }, [batteryData]); // Include batteryData as a dependency
 
-    // Render loading state if no battery data
-    if (!batteryData) {
+    // Show loading spinner while initializing
+    if (loading) {
         return (
-            <section className="battery">
-                <div className="battery__card">
-                    <div className="battery__data">
-                        <p className="battery__text">Connecting...</p>
-                        <h1 className="battery__percentage">--</h1>
-                    </div>
-                </div>
-            </section>
+            <div className="home-container">
+                <LoadingSpinner size="large" />
+            </div>
         );
     }
 
@@ -99,4 +108,4 @@ const Home = () => {
     );
 };
 
-export default Home;
+export default React.memo(Home);

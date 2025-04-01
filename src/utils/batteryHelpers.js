@@ -1,5 +1,6 @@
+// batterysync-react/src/utils/batteryHelpers.js
 export const getBatteryColor = (level) => {
-  if (!level && level !== 0) return "gradient-color-red";
+  if (level === null || level === undefined) return "gradient-color-red";
   if (level <= 20) return "gradient-color-red";
   if (level <= 40) return "gradient-color-orange";
   if (level <= 80) return "gradient-color-yellow";
@@ -7,6 +8,14 @@ export const getBatteryColor = (level) => {
 };
 
 export const getStatusInfo = (level, charging) => {
+  // Handle null/undefined battery level
+  if (level === null || level === undefined) {
+    return {
+      text: "Connecting...",
+      icon: "ri-loader-4-line animated-spin",
+    };
+  }
+
   // Handle critical battery level
   if (level <= 10) {
     return {
@@ -27,13 +36,7 @@ export const getStatusInfo = (level, charging) => {
     };
   }
 
-  if (!level && level !== 0) {
-    return {
-      text: "Connecting...",
-      icon: "ri-loader-4-line animated-spin",
-    };
-  }
-
+  // Handle full battery
   if (level >= 100) {
     return {
       text: "Full battery",
@@ -41,13 +44,7 @@ export const getStatusInfo = (level, charging) => {
     };
   }
 
-  if (level <= 20 && !charging) {
-    return {
-      text: "Low battery",
-      icon: "ri-plug-line animated-red",
-    };
-  }
-
+  // Handle charging states
   if (charging) {
     return {
       text: "Charging...",
@@ -55,5 +52,21 @@ export const getStatusInfo = (level, charging) => {
     };
   }
 
-  return { text: "", icon: "" };
+  // Default state based on battery level
+  if (level > 80) {
+    return {
+      text: "Good battery",
+      icon: "ri-battery-2-line green-color",
+    };
+  } else if (level > 40) {
+    return {
+      text: "Medium battery",
+      icon: "ri-battery-line",
+    };
+  } else {
+    return {
+      text: "Low battery",
+      icon: "ri-battery-low-line",
+    };
+  }
 };
