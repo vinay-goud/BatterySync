@@ -1,5 +1,5 @@
 import { api } from "./api";
-import { showNotification } from "../utils/notifications";
+//import { showNotification } from "../utils/notifications";
 
 class BatteryService {
   constructor() {
