@@ -1,5 +1,7 @@
-const CACHE_NAME = "batterysync-v1";
-const ASSETS_TO_CACHE = [
+/* eslint-disable no-undef */
+// This is a minimal service worker for caching and offline functionality
+const CACHE_NAME = "batterysync-cache-v1";
+const urlsToCache = [
   "/",
   "/index.html",
   "/manifest.json",
@@ -11,17 +13,20 @@ const ASSETS_TO_CACHE = [
   "https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css",
 ];
 
-// Install Service Worker & Cache Files
+// batterysync-react/public/service-worker.js
+// This is a minimal service worker for caching and offline functionality
+
+// Install event - cache assets
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log("Cache opened");
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(urlsToCache);
     })
   );
 });
 
-// Activate Service Worker & Remove Old Cache
+// Activate event - clean up old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -61,7 +66,7 @@ self.addEventListener("fetch", (event) => {
 
         caches.open(CACHE_NAME).then((cache) => {
           // Don't cache API requests
-          if (!event.request.url.includes("batterysync-backend.onrender.com")) {
+          if (!event.request.url.includes("/api/")) {
             cache.put(event.request, responseToCache);
           }
         });
@@ -78,9 +83,16 @@ self.addEventListener("push", (event) => {
 
   const options = {
     body: data.body,
-    icon: "/img/icon-192.png",
-    badge: "/img/icon-192.png",
+    icon: "img/icon-192.png",
+    badge: "img/icon-192.png",
   };
 
   event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// Notification click event
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  event.waitUntil(clients.openWindow("/"));
 });

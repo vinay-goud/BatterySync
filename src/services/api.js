@@ -1,77 +1,109 @@
+// batterysync-react/src/services/api.js
 import { API_URL } from "../utils/constants";
 
 class ApiService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || API_URL;
+    this.baseUrl = API_URL;
   }
 
   async request(endpoint, options = {}) {
-    const token = localStorage.getItem("authToken");
+    console.log(`Requesting: ${this.baseUrl}/${endpoint}`);
+
+    // Set default headers
     const headers = {
       "Content-Type": "application/json",
-      Accept: "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
     };
 
-    const url = `${this.baseURL}${endpoint}`;
-    console.log("Requesting:", url); // For debugging
+    // Add auth token if available
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    // Create request URL
+    const url = `${this.baseUrl}/${endpoint}`;
+
+    // Create request options
+    const requestOptions = {
+      ...options,
+      headers,
+      credentials: "include", // Include credentials for CORS
+    };
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-        mode: "cors",
-      });
+      const response = await fetch(url, requestOptions);
 
+      // Check for HTTP errors
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          detail: `HTTP error ${response.status}`,
+        }));
+
+        // Handle auth errors
         if (response.status === 401) {
           this.handleAuthError();
-          throw new Error("Unauthorized access");
         }
-        const error = await response.json();
-        throw new Error(error.detail || "Request failed");
+
+        throw new Error(errorData.detail || "Unknown API error");
       }
 
-      return response.json();
+      // Return JSON response or empty object if no content
+      return response.status !== 204 ? await response.json() : {};
     } catch (error) {
-      console.error(`API Error (${endpoint}):`, error);
-      throw new Error(
-        error.message || "Network error. Please check your connection."
-      );
+      console.error(`API request failed: ${error.message}`);
+
+      // Format error message
+      if (error.message.includes("Failed to fetch")) {
+        throw new Error(
+          "Network error: Could not connect to the server. Please check your internet connection or try again later."
+        );
+      }
+
+      throw error;
     }
+  }
+
+  handleAuthError() {
+    // Clear auth data and redirect to login
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userEmail");
+    window.location.href = "/login";
   }
 
   // Auth endpoints
   async login(email, password) {
-    return this.request("/login", {
+    return this.request("login", {
       method: "POST",
-      body: JSON.stringify({
-        email: email.trim(),
-        password,
-      }),
+      body: JSON.stringify({ email, password }),
     });
   }
 
   async signup(email, password) {
-    return this.request("/signup", {
+    return this.request("signup", {
       method: "POST",
-      body: JSON.stringify({
-        email: email.trim(),
-        password,
-      }),
+      body: JSON.stringify({ email, password }),
     });
   }
 
   // Battery endpoints
   async getBatteryStatus(email) {
-    return this.request(`/batterystatus?email=${encodeURIComponent(email)}`);
+    return this.request(`battery_status?email=${encodeURIComponent(email)}`);
   }
 
   async updateBatteryStatus(batteryData) {
-    return this.request("/update_battery", {
-      method: "POST",
-      body: JSON.stringify(batteryData),
-    });
+    console.log("Sending battery update to API:", batteryData);
+    try {
+      const result = await this.request("update_battery", {
+        method: "POST",
+        body: JSON.stringify(batteryData),
+      });
+      console.log("Battery update API response:", result);
+      return result;
+    } catch (error) {
+      console.error("Battery update API error:", error);
+      throw error;
+    }
   }
 }
 

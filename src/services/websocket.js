@@ -1,114 +1,162 @@
+// batterysync-react/src/services/websocket.js
 import { WS_URL } from "../utils/constants";
 import useBatteryStore from "../store/batteryStore";
-import { showNotification } from "../utils/notifications";
 
 class WebSocketService {
   constructor() {
-    this.ws = null;
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.socket = null;
+    this.connectAttempts = 0;
+    this.maxConnectAttempts = 5;
     this.reconnectTimeout = null;
-    this.lastBatteryData = null;
   }
 
   connect(token, email) {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("Max WebSocket reconnection attempts reached");
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      console.log("WebSocket is already connected");
       return;
     }
 
-    try {
-      const url = `${WS_URL}?token=${encodeURIComponent(
-        token
-      )}&email=${encodeURIComponent(email)}`;
-      this.ws = new WebSocket(url);
+    // Close any existing connection
+    this.disconnect();
 
-      this.ws.onopen = this.handleOpen.bind(this);
-      this.ws.onclose = this.handleClose.bind(this);
-      this.ws.onerror = this.handleError.bind(this);
-      this.ws.onmessage = this.handleMessage.bind(this);
-    } catch (error) {
-      console.error("WebSocket connection error:", error);
-      this.scheduleReconnect();
-    }
+    const url = `${WS_URL}?token=${token}&email=${encodeURIComponent(email)}`;
+    console.log(`Connecting to WebSocket at: ${url}`);
+    this.socket = new WebSocket(url);
+
+    this.socket.onopen = this.handleOpen.bind(this);
+    this.socket.onclose = this.handleClose.bind(this);
+    this.socket.onerror = this.handleError.bind(this);
+    this.socket.onmessage = this.handleMessage.bind(this);
+
+    console.log("WebSocket connecting...");
   }
 
   handleOpen() {
     console.log("WebSocket connected");
-    this.reconnectAttempts = 0;
+    this.connectAttempts = 0;
   }
 
-  handleClose() {
-    console.log("WebSocket closed");
-    this.scheduleReconnect();
-  }
+  handleClose(event) {
+    console.log(`WebSocket disconnected: ${event.code} ${event.reason}`);
 
-  handleError(error) {
-    console.error("WebSocket error:", error);
-  }
-
-  handleMessage(event) {
-    try {
-      const data = JSON.parse(event.data);
-
-      if (data.error === "unauthorized") {
-        window.location.href = "/login";
-        return;
-      }
-
-      // Update battery store
-      useBatteryStore.getState().setBatteryData(data);
-
-      // Handle notifications for state changes
-      if (this.lastBatteryData) {
-        const wasCharging = this.lastBatteryData.charging;
-        const isCharging = data.charging;
-
-        if (wasCharging !== isCharging) {
-          if (isCharging) {
-            showNotification("Charger Connected", "Battery is now charging");
-          } else {
-            showNotification(
-              "Charger Disconnected",
-              "Battery is on power save mode"
-            );
-          }
-        }
-
-        if (data.level >= 90 && isCharging) {
-          showNotification(
-            "Battery Full!",
-            "Consider unplugging to save battery health"
-          );
-        }
-      }
-
-      this.lastBatteryData = data;
-    } catch (error) {
-      console.error("WebSocket message error:", error);
-    }
-  }
-
-  scheduleReconnect() {
-    if (!this.reconnectTimeout) {
-      this.reconnectTimeout = setTimeout(() => {
-        this.reconnectTimeout = null;
-        this.reconnectAttempts++;
-        this.connect();
-      }, 5000);
-    }
-  }
-
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
+    // Clear any existing reconnect timeout
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
-    this.lastBatteryData = null;
+
+    // Try to reconnect if not intentionally closed and within max attempts
+    if (!event.wasClean && this.connectAttempts < this.maxConnectAttempts) {
+      this.scheduleReconnect();
+    }
+  }
+
+  handleError(error) {
+    console.error("WebSocket error:", error);
+    useBatteryStore
+      .getState()
+      .setError("WebSocket connection error. Please try again later.");
+  }
+
+  handleMessage(event) {
+    try {
+      console.log("Raw WebSocket message:", event.data);
+      const data = JSON.parse(event.data);
+      const email = localStorage.getItem("userEmail");
+
+      // Handle detailed debugging
+      console.log("Parsed WebSocket data:", data);
+      console.log("Current user email:", email);
+
+      // Handle error messages
+      if (data.error) {
+        console.error("WebSocket message error:", data.error);
+        if (data.error === "unauthorized") {
+          localStorage.removeItem("authToken");
+          window.location.href = "/login";
+        }
+        return;
+      }
+
+      // Try to find the user's battery data
+      let batteryData = null;
+
+      // Option 1: Check if the data has the email as a key
+      if (data[email]) {
+        batteryData = data[email];
+        console.log("Found battery data by email key:", batteryData);
+      }
+      // Option 2: Data might be directly the battery data
+      else if (data.percentage !== undefined && data.charging !== undefined) {
+        batteryData = data;
+        console.log("Found direct battery data:", batteryData);
+      }
+      // Option 3: Scan all keys for any battery data
+      else {
+        console.log("Scanning WebSocket data for battery info...");
+        Object.entries(data).forEach(([key, value]) => {
+          console.log(`Checking key "${key}":`, value);
+          if (
+            value &&
+            typeof value === "object" &&
+            "percentage" in value &&
+            "charging" in value
+          ) {
+            console.log(`Found battery data in key "${key}":`, value);
+            batteryData = value;
+          }
+        });
+      }
+
+      // Update battery data if found
+      if (batteryData) {
+        useBatteryStore.getState().setBatteryData({
+          level: batteryData.percentage,
+          charging: batteryData.charging,
+        });
+      } else {
+        console.warn("No battery data found in WebSocket message");
+      }
+    } catch (error) {
+      console.error("Error parsing WebSocket message:", error, event.data);
+    }
+  }
+
+  scheduleReconnect() {
+    this.connectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.connectAttempts), 30000);
+
+    console.log(
+      `Scheduling WebSocket reconnect in ${delay}ms (attempt ${this.connectAttempts})`
+    );
+
+    this.reconnectTimeout = setTimeout(() => {
+      const token = localStorage.getItem("authToken");
+      const email = localStorage.getItem("userEmail");
+
+      if (token && email) {
+        console.log(`Attempting WebSocket reconnect #${this.connectAttempts}`);
+        this.connect(token, email);
+      }
+    }, delay);
+  }
+
+  disconnect() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
+    if (this.socket) {
+      // Only close if the connection is open or connecting
+      if (
+        this.socket.readyState === WebSocket.OPEN ||
+        this.socket.readyState === WebSocket.CONNECTING
+      ) {
+        this.socket.close();
+      }
+      this.socket = null;
+    }
   }
 }
 

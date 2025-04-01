@@ -7,6 +7,26 @@ export const getBatteryColor = (level) => {
 };
 
 export const getStatusInfo = (level, charging) => {
+  // Handle critical battery level
+  if (level <= 10) {
+    return {
+      text: "Critical battery",
+      icon: charging
+        ? "ri-flashlight-line animated-green"
+        : "ri-battery-low-line animated-red",
+    };
+  }
+
+  // Handle low battery level
+  if (level <= 20) {
+    return {
+      text: "Low battery",
+      icon: charging
+        ? "ri-flashlight-line animated-green"
+        : "ri-battery-low-line animated-red",
+    };
+  }
+
   if (!level && level !== 0) {
     return {
       text: "Connecting...",
