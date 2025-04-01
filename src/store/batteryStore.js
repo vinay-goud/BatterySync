@@ -1,6 +1,5 @@
-// batterysync-react/src/store/batteryStore.js
+// batterysync-react/src/store/batteryStore.js - URGENT FIX
 import { create } from "zustand";
-//import { api } from "../services/api";
 import { batteryService } from "../services/battery";
 
 const useBatteryStore = create((set, get) => ({
@@ -11,6 +10,7 @@ const useBatteryStore = create((set, get) => ({
   },
   error: null,
   loading: false,
+  initialized: false,
 
   setBatteryData: (data) => {
     console.log("Setting battery data in store:", data);
@@ -27,7 +27,16 @@ const useBatteryStore = create((set, get) => ({
   setLoading: (loading) => set({ loading }),
 
   initializeBattery: async () => {
-    set({ loading: true });
+    const state = get();
+
+    // Prevent multiple initializations
+    if (state.initialized || state.loading) {
+      console.log("Battery already initialized or initializing");
+      return;
+    }
+
+    set({ loading: true, initialized: true });
+
     try {
       console.log("Initializing battery service...");
       // Initialize battery service
@@ -43,10 +52,25 @@ const useBatteryStore = create((set, get) => ({
         loading: false,
       });
 
-      // Schedule regular updates (every 30 seconds)
-      setInterval(() => {
-        get().updateBatteryStatus();
-      }, 30000);
+      // Schedule a single update every 60 seconds
+      const intervalId = setInterval(() => {
+        batteryService
+          .updateBatteryStatus()
+          .then((data) => {
+            if (data) {
+              console.log("Scheduled battery update:", data);
+            }
+          })
+          .catch((err) =>
+            console.error("Scheduled battery update error:", err)
+          );
+      }, 60000); // Update every minute
+
+      // Return cleanup function
+      return () => {
+        console.log("Cleaning up battery service");
+        clearInterval(intervalId);
+      };
     } catch (error) {
       console.error("Battery initialization error:", error);
       set({ error: error.message, loading: false });

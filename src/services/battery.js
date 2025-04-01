@@ -1,8 +1,10 @@
-// batterysync-react/src/services/battery.js
+// batterysync-react/src/services/battery.js - URGENT FIX
 class BatteryService {
   constructor() {
     this.battery = null;
     this.deviceId = localStorage.getItem("deviceId") || this.generateDeviceId();
+    this.isUpdating = false; // Add lock to prevent concurrent updates
+    this.lastUpdateTime = 0; // Track last update time
   }
 
   generateDeviceId() {
@@ -27,117 +29,108 @@ class BatteryService {
 
     // Check if Battery API is supported
     if (!("getBattery" in navigator)) {
-      console.warn("Battery API not supported in this browser");
+      console.log("Battery API not supported, using fallback values");
 
-      // Use fallback values
-      const fallbackData = {
-        level: 75, // Default to 75%
-        charging: true, // Default to charging
+      // Use fallback values - no need to set up listeners that might cause loops
+      return {
+        level: 75,
+        charging: true,
       };
-
-      // Set up a simulated battery level change
-      setInterval(async () => {
-        const randomChange = Math.random() < 0.5 ? -1 : 1;
-        const newLevel = Math.min(
-          100,
-          Math.max(0, fallbackData.level + randomChange)
-        );
-        fallbackData.level = newLevel;
-
-        const { api } = await import("./api");
-        const email = localStorage.getItem("userEmail");
-
-        if (email) {
-          api.updateBatteryStatus({
-            email,
-            percentage: newLevel,
-            charging: fallbackData.charging,
-          });
-        }
-      }, 30000);
-
-      return fallbackData;
     }
 
     // Get battery instance
     try {
       this.battery = await navigator.getBattery();
       this.setupBatteryListeners();
-      // Initial update
+
+      // Initial update with throttling
       await this.updateBatteryStatus();
+
       return {
-        level: this.battery.level * 100,
+        level: Math.round(this.battery.level * 100),
         charging: this.battery.charging,
       };
     } catch (error) {
       console.error("Failed to get battery status:", error);
-      throw error;
+      return {
+        level: 50, // Fallback value
+        charging: false,
+      };
     }
   }
 
   async updateBatteryStatus() {
-    if (!this.battery && !("getBattery" in navigator)) {
-      // Handle case where we're using fallback values
-      const email = localStorage.getItem("userEmail");
-      if (!email) return null;
-
-      // Get fallback battery level
-      const fallbackLevel = Math.floor(Math.random() * 100);
-      const fallbackCharging = Math.random() > 0.5;
-
-      // Prepare fallback data
-      const batteryData = {
-        email: email,
-        percentage: fallbackLevel,
-        charging: fallbackCharging,
-      };
-
-      // Send fallback data
-      try {
-        const { api } = await import("./api");
-        await api.updateBatteryStatus(batteryData);
-        return batteryData;
-      } catch (error) {
-        console.error("Error updating fallback battery status:", error);
-        throw error;
-      }
+    // Prevent concurrent updates and throttle to max once per 10 seconds
+    const now = Date.now();
+    if (this.isUpdating || now - this.lastUpdateTime < 10000) {
+      console.log(
+        "Skipping battery update: too frequent or already in progress"
+      );
+      return null;
     }
 
-    if (!this.battery) return null;
+    this.isUpdating = true;
+    this.lastUpdateTime = now;
 
-    const email = localStorage.getItem("userEmail");
-    if (!email) return null;
-
-    // Prepare data for API
-    const batteryData = {
-      email: email,
-      percentage: Math.round(this.battery.level * 100),
-      charging: this.battery.charging,
-    };
-
-    // Send data via API
     try {
+      const email = localStorage.getItem("userEmail");
+      if (!email) {
+        this.isUpdating = false;
+        return null;
+      }
+
+      // Get battery info
+      const percentage = this.battery
+        ? Math.round(this.battery.level * 100)
+        : Math.floor(Math.random() * (100 - 30) + 30); // Fallback random value
+
+      const charging = this.battery ? this.battery.charging : false;
+
+      // Prepare data for API
+      const batteryData = {
+        email,
+        percentage,
+        charging,
+      };
+
+      // Send data via API
       const { api } = await import("./api");
       await api.updateBatteryStatus(batteryData);
+
+      this.isUpdating = false;
       return batteryData;
     } catch (error) {
       console.error("Error updating battery status:", error);
-      throw error;
+      this.isUpdating = false;
+      return null;
     }
   }
 
   setupBatteryListeners() {
     if (!this.battery) return;
 
-    // Update when charging status changes
-    this.battery.addEventListener("chargingchange", () => {
+    // Using throttled event handlers to prevent excessive updates
+    const throttledUpdate = this.throttle(() => {
       this.updateBatteryStatus();
-    });
+    }, 10000); // Only update every 10 seconds at most
+
+    // Update when charging status changes
+    this.battery.addEventListener("chargingchange", throttledUpdate);
 
     // Update when battery level changes
-    this.battery.addEventListener("levelchange", () => {
-      this.updateBatteryStatus();
-    });
+    this.battery.addEventListener("levelchange", throttledUpdate);
+  }
+
+  // Add throttle function to limit frequency of updates
+  throttle(func, limit) {
+    let inThrottle;
+    return function () {
+      if (!inThrottle) {
+        func.apply(this, arguments);
+        inThrottle = true;
+        setTimeout(() => (inThrottle = false), limit);
+      }
+    };
   }
 }
 
