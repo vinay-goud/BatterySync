@@ -2,7 +2,7 @@ import { API_URL } from "../utils/constants";
 
 class ApiService {
   constructor() {
-    this.baseURL = API_URL;
+    this.baseURL = import.meta.env.VITE_API_URL || API_URL;
   }
 
   async request(endpoint, options = {}) {
@@ -10,6 +10,7 @@ class ApiService {
     const headers = {
       "Content-Type": "application/json",
       Accept: "application/json",
+      Origin: window.location.origin,
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     };
@@ -22,20 +23,22 @@ class ApiService {
         mode: "cors",
       });
 
-      if (response.status === 401) {
-        this.handleAuthError();
-        throw new Error("Unauthorized");
-      }
-
       const data = await response.json();
 
+      if (response.status === 401) {
+        this.handleAuthError();
+        throw new Error("Unauthorized access. Please login again.");
+      }
+
       if (!response.ok) {
-        throw new Error(data.detail || "API request failed");
+        throw new Error(data.detail || "Request failed");
       }
 
       return data;
     } catch (error) {
-      console.error(`API Error (${endpoint}):`, error);
+      if (error.name === "TypeError" && error.message === "Failed to fetch") {
+        throw new Error("Network error. Please check your connection.");
+      }
       throw error;
     }
   }
@@ -43,21 +46,31 @@ class ApiService {
   handleAuthError() {
     localStorage.removeItem("authToken");
     localStorage.removeItem("userEmail");
-    window.location.href = "/login";
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
   }
 
   // Auth endpoints
   async login(email, password) {
     return this.request("/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        device_id: localStorage.getItem("deviceId") || crypto.randomUUID(),
+      }),
     });
   }
 
   async signup(email, password) {
     return this.request("/signup", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        device_id: localStorage.getItem("deviceId") || crypto.randomUUID(),
+      }),
     });
   }
 
